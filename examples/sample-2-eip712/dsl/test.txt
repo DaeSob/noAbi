@@ -1,0 +1,82 @@
+# ganache-cli -d -m xen -l 15000000 -h 0.0.0.0 -p 8545 --chainId 1338 -e 10000000 -g 15932629
+# sh ./examples/sample-2-eip712/dsl/test.txt
+
+set --output minimal
+
+###############################################################################################################
+# 0. eip712 test
+# Collection Name: eip712
+# deploy로 실행 되어 import 된 collection은 초기화 되어 abi가 import 됩니다
+# 따라서 deploy 되기전 import 되어 있는 abi는 모두 사라지게 됩니다
+compose ./examples/sample-2-eip712/compose-files/compose_eip712.json
+deploy ./examples/sample-2-eip712/compose-files/compose_eip712.json
+
+# 백엔드 API를 통한 EIP-712 서명 요청
+curl POST http://127.0.0.1:8080/man/v3/dataSign/eip712
+  -H "Content-Type: application/json"
+  -d '{
+        "requestId": "req-1234",
+        "domain": {
+          "chainId": "1338",
+          "name": "NOABI",
+          "version": "V0.6.0",
+          "verifyingContract": "${testAddress}"
+        },
+        "primaryType": "Permit",
+        "data": [
+          {
+            "type": "address",
+            "name": "owner",
+            "value": "0xb171fe0b0804651446a50344ae14e56596190bcf"
+          },
+          {
+            "type": "address",
+            "name": "spender",
+            "value": "0x71ad669844d04f7eb028d6014473c4c099ad1a60"
+          },
+          {
+            "type": "uint256",
+            "name": "value",
+            "value": "1000000"
+          }
+        ],
+        "KeyPair": [
+          {
+            "account": "0xb171fe0b0804651446a50344ae14e56596190bcf",
+            "phrase": "old"
+          }
+        ]
+      }'
+      => res1;
+
+# 서명 검증 (컨트랙트에서 서명자 주소 복구)
+eip712.EIP712RecoverTest("${testAddress}").recoverSigner(
+    "0xb171fe0b0804651446a50344ae14e56596190bcf",
+    "0x71ad669844d04f7eb028d6014473c4c099ad1a60",
+    "1000000",
+    "${res1.result.data.signatures.0}"
+  )
+  .then(res2 => {
+    // 서명 검증 결과 확인
+    const expectedAddress = "0xb171fe0b0804651446a50344ae14e56596190bcf";
+    const assert = require("assert");
+    try {
+      assert.equal(res2.recoveredAddress.toLowerCase(), expectedAddress.toLowerCase(), 
+        "Recovered address should match signer");
+      console.log("✓ Signature verification passed");
+      varStore["verificationResult"] = "success";
+    } catch (e) {
+      varStore["verificationResult"] = "failed: " + e.message;
+      console.log("✗ Signature verification failed: " + e.message);
+    }
+  })
+  .catch(err => {
+    varStore["verificationError"] = err.message;
+    console.log("Error: " + err.message);
+  });
+
+echo "----------------------------------------------------"
+echo "Test Address: ${testAddress}"
+echo "Signature: ${res.result.data.signatures.0}"
+echo "Verification Result: ${verificationResult}"
+echo "Verification Error: ${verificationError}"

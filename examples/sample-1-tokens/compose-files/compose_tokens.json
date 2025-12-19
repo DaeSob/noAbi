@@ -5,9 +5,9 @@
       {
         "source": {
           "normalize": {
-            "path": "c:/workspace/daesob/cli/examples/sample-1-tokens/contracts"
+            "path": "c:/workspace/daesob/noABI/examples/sample-1-tokens/contracts"
           },
-          "entry": "c:/workspace/daesob/cli/examples/sample-1-tokens/contracts/build/package-token.sol",
+          "entry": "c:/workspace/daesob/noABI/examples/sample-1-tokens/contracts/build/package-token.sol",
           "type": "solidity-package",
           "description": {
             "normalizedPath": "해당 source를 noABI 내부에서 식별하기 위해 project root 기준으로 정규화된 논리 경로입니다.",
@@ -16,7 +16,7 @@
           }
         },
         "artifacts": {
-          "solcOutput": "c:/workspace/daesob/cli/bin/examples/sample-1-tokens/contracts/build/package-token-solc-output.json",
+          "solcOutput": "c:/workspace/daesob/noABI/bin/examples/sample-1-tokens/contracts/build/package-token-solc-output.json",
           "description": {
             "solcOutput": "solc 또는 VSCode Solidity 플러그인이 빌드 후 생성한 표준 JSON output 파일 경로입니다. ABI, bytecode, deployedBytecode, function signatures 등이 포함되며 noABI 엔진은 이 파일을 기반으로 contract metadata를 자동 분석합니다."
           }

@@ -2,7 +2,7 @@ const https = require('https');
 const http = require('http');
 const { URL } = require('url');
 const { _getParseInput } = require("./common/currentPath.js");
-const { _parseKeyValue, reservedVarName } = require("./common/keyValue.js");
+const { _parseKeyValue, _getNestedValue, reservedVarName } = require("./common/keyValue.js");
 const { textColor, printError, printSuccess, printGray, printDefault } = require("../log/printScreen.js");
 
 /**
@@ -161,17 +161,55 @@ async function _commandCurl(_inputTokens, _line) {
       }
       
       if (postData) {
-        // 변수 파싱
-        try {
-          const parsedData = _parseKeyValue(postData);
-          if (typeof parsedData === 'object') {
-            postData = JSON.stringify(parsedData);
-          } else {
-            postData = String(parsedData);
+        // ${변수명} 형식 처리 (echo와 동일한 방식)
+        const regVarName = /\$\{([^}]+)\}/g;
+        let match;
+        let lastIndex = 0;
+        let processedData = '';
+        
+        while ((match = regVarName.exec(postData)) !== null) {
+          // 변수 앞의 텍스트 추가
+          processedData += postData.substring(lastIndex, match.index);
+          
+          // 변수 값 가져오기
+          try {
+            const varName = match[1];
+            
+            // 먼저 예약 변수인지 확인 (예: USER)
+            const reservedVars = ['USER'];
+            const isReservedVar = reservedVars.some(rv => varName === rv || varName.startsWith(rv + '.'));
+            
+            let varValue;
+            if (isReservedVar) {
+              // 예약 변수는 _parseKeyValue 사용
+              varValue = _parseKeyValue(match[0]);
+            } else {
+              // store 변수는 _getNestedValue로 subkey 지원
+              varValue = _getNestedValue(varName, global.varStore);
+              if (varValue === undefined) {
+                throw new Error(`Variable "${varName}" is undefined`);
+              }
+            }
+            
+            // 변수 값을 문자열로 변환 (JSON 객체면 JSON.stringify)
+            let varValueStr;
+            if (typeof varValue === 'object' && varValue !== null) {
+              varValueStr = JSON.stringify(varValue);
+            } else {
+              varValueStr = String(varValue);
+            }
+            processedData += varValueStr;
+          } catch (e) {
+            // 변수가 없으면 원본 유지
+            processedData += match[0];
           }
-        } catch (e) {
-          // 변수가 없으면 원본 사용
+          
+          lastIndex = match.index + match[0].length;
         }
+        
+        // 마지막 텍스트 추가
+        processedData += postData.substring(lastIndex);
+        postData = processedData;
         
         // Content-Type이 없으면 기본값 설정
         if (!headers['Content-Type'] && !headers['content-type']) {
